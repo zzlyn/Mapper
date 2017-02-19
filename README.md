@@ -24,7 +24,7 @@
   - Route planning: a similar traveling-salesman problem, resolved with an altered version of the path finding function
 
 
-### Implementation codes are in 'libstreetmap/src' and 'main/src':
+### Implementation codes are in "libstreetmap/src" and "main/src":
   - m1 - parsing / analysing binary data to vector and map structures
   - m2 - front end graphic implmentation
   - m3 - path finding solution with dijkstra / a-star
