@@ -1,6 +1,7 @@
 # Mapper - a Graphical Information System (GIS) application
 
 Overview:
+
   - A map application that turns binary data of a city into GIS with UI and various functionalities
   - Implemented with the easyGL library, which only allows basic graphical operations like drawing straight lines and coloring areas
   
