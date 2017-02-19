@@ -1,7 +1,7 @@
 # Mapper - a Graphical Information System (GIS) application
 
 Overview:
-  - A map application that turns binary data of a city into GIS with UI and various functionalities
+  - A map application that turns binary data of a city into GIS with UI and various functionalities
   - Implemented with the easyGL library, which only allows basic graphical operations like drawing straight lines and coloring areas
   
 Front end features optimized based on user expereince:
@@ -17,6 +17,8 @@ Back end algorithms & functionalities
     - Applied Dijkstra's Algorithm to the data structure designed for the map, achieved very satisfactory performance
     - Intergrated the solution with A-Star technique based on a physical euclidean distance heuristic, improved performance in most cases
   - Route planning: a similar traveling-salesman problem, resolved with an altered version of the path finding function
-  
+
+Implemented code are in the libstreetmap/src folder.
+
 A more detailed final project report documentation: 
   https://docs.google.com/document/d/1DBmeeYcobygr-ExJpoWJ-o9VmCs3cj1OnHoJOy5E2Jo/edit?usp=sharing
