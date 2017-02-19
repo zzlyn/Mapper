@@ -3,8 +3,7 @@
 Overview:
   - A map application that turns binary data of a city into GIS with UI and various functionalities
   - Implemented with the easyGL library, which allows basic graphical operations like drawing straight lines and coloring areas
-<br /> 
-<br /> 
+
 Front end features optimized based on user expereince:
   - Sizes of objects (buildings, streets, grasslands etc.) based on user zooming level
   - Filtration of objects based on zoom level
