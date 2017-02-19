@@ -18,7 +18,7 @@ Back end algorithms & functionalities:
     - Intergrated the solution with A-Star technique based on a physical euclidean distance heuristic, improved performance in most cases
   - Route planning: a similar traveling-salesman problem, resolved with an altered version of the path finding function
 
-Implementation code are in libstreetmap/src:
+Implementation codes are in libstreetmap/src and main/src:
   - m1 - parsing / analysing binary data to vector and map structures
   - m2 - front end graphic implmentation
   - m3 - path finding solution with dijkstra / a-star
