@@ -10,7 +10,7 @@ Front end features optimized based on user expereince:
       - Optimal filtration & zooming algorithm y = x ^ 0.66
   - Rendering of edges / curves
     
-Back end algorithms & functionalities
+Back end algorithms & functionalities:
   - Search: Allows user to search for specific streets / locations and auto zoom into the destination
     - Utilized vectors and multi maps to maximize the search speed
   - Path Finding: finds shortest path for any two chosen points on the map
@@ -18,7 +18,11 @@ Back end algorithms & functionalities
     - Intergrated the solution with A-Star technique based on a physical euclidean distance heuristic, improved performance in most cases
   - Route planning: a similar traveling-salesman problem, resolved with an altered version of the path finding function
 
-Implementation code are in libstreetmap/src
+Implementation code are in libstreetmap/src:
+  - m1 - parsing / analysing binary data to vector and map structures
+  - m2 - front end graphic implmentation
+  - m3 - path finding solution with dijkstra / a-star
+  - m4 - courier route planning solution
 
 A more detailed final project report documentation: 
   https://docs.google.com/document/d/1DBmeeYcobygr-ExJpoWJ-o9VmCs3cj1OnHoJOy5E2Jo/edit?usp=sharing
