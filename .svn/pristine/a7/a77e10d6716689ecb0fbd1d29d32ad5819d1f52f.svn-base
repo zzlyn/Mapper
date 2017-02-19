@@ -1,0 +1,23 @@
+#pragma once
+#include <string>
+#include "graphics.h"
+#include "StreetsDatabaseAPI.h"
+// Draws the map. You can assume your load_map (string map_name)
+// function is called before this function in the unit tests.
+// Your main () program should do the same.
+void draw_map();
+void drawscreen();
+void drawsegments();
+void drawfeatures_greenspace();
+void drawfeatures_building();
+void drawfeatures_park_beach_golfcourse();
+void drawfeatures_island();
+void drawfeatures_lake_shoreline();
+void drawafeature(unsigned i);
+void drawfeatures_river_stream();
+void showPOI();
+void act(float x, float y, t_event_buttonPressed event);
+void search(void (*drawscreen) (void));
+void drawStreetName(unsigned ID);
+LatLon findCenterPoint(unsigned streetID) ;
+void drawinfobox();

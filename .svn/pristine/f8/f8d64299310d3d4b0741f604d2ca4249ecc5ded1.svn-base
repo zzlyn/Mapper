@@ -1,0 +1,120 @@
+#include "StreetsDatabaseAPI.h"
+#include "m1.h"
+#include <vector>
+#include <map>
+
+using namespace std;
+//load the map
+
+multimap<string, unsigned> FindID;
+multimap<unsigned, unsigned> findStreetFromStreet;
+
+bool load_map(std::string map_name) {
+
+    bool load_success = loadStreetsDatabaseBIN(map_name);
+
+    for(unsigned i=0; i< getNumberOfStreets()-1; i++){
+        FindID.insert(make_pair(getStreetName(i),i));
+    }
+    
+    for(unsigned i=0; i< getNumberOfStreetSegments()-1; i++){
+        StreetSegmentInfo c=getStreetSegmentInfo(i);
+        findStreetFromStreet.insert(make_pair(c.streetID,i));
+    }
+    // create any data structures here to speed up your API functions
+    // ...
+    
+
+    return load_success;
+}
+
+//close the map
+void close_map() {
+    closeStreetDatabase();
+    
+    // destroy/clear any data structures you created in load_map
+    // ...
+}
+
+//implement the rest of the functions provided in m1.h
+// ...
+double find_distance_between_two_points(LatLon point1, LatLon point2){
+    return 0;
+
+}
+
+vector<unsigned> find_street_ids_from_name(std::string street_name){
+    vector<unsigned> street_ids;
+    auto range = FindID.equal_range(street_name);
+    for (auto iter = range.first;  iter != range.second; iter++){
+        street_ids.push_back(iter->second);
+    }
+    /*for(int i=0; i< getNumberOfStreets()-1; i++){
+    if(getStreetName(i)==street_name)
+        street_ids.push_back(i);
+    }*/
+    
+        return street_ids;
+}
+
+vector<unsigned> find_intersection_street_segments(unsigned intersection_id){
+    unsigned i=0;
+    vector<unsigned> streetsegids;
+    for(i=0; i<getIntersectionStreetSegmentCount(intersection_id); i++){
+        streetsegids.push_back(getIntersectionStreetSegment(intersection_id, i));
+    }
+    return streetsegids;
+}
+
+vector<std::string> find_intersection_street_names(unsigned intersection_id){
+    vector<unsigned> segids=find_intersection_street_segments(intersection_id);
+    vector<string> stnames;
+    for (auto iter=segids.begin(); iter!=segids.end(); iter++){
+        stnames.push_back(getStreetName(*iter));
+    }
+    return stnames;
+}
+
+bool are_directly_connected(unsigned intersection_id1, unsigned intersection_id2){
+    vector<unsigned> segids=find_intersection_street_segments(intersection_id1);
+    for (auto iter=segids.begin(); iter!=segids.end(); iter++){
+        StreetSegmentInfo a=getStreetSegmentInfo(*iter);
+        if ((a.from==intersection_id1)&&(a.to==intersection_id2)){
+            return true;
+        }
+        else if((a.from==intersection_id2)&&(a.to==intersection_id1)&&(a.oneWay==false)){
+            return true;
+        }
+    }
+    return false;
+}
+
+vector<unsigned> find_street_street_segments(unsigned street_id){
+   vector<unsigned> segids;
+   auto range=findStreetFromStreet.equal_range(street_id);
+   for (auto iter=range.first; iter!=range.second; iter++){
+       segids.push_back(iter->second);
+   }
+   return segids;
+   
+}
+
+vector<unsigned> find_all_street_intersections(unsigned street_id){
+    vector<unsigned> segids;
+    vector<unsigned> allinters;
+    segids=find_street_street_segments(street_id);
+    for (auto iter=segids.begin(); iter!=segids.end(); iter++){
+        StreetSegmentInfo stru=getStreetSegmentInfo(*iter);
+        unsigned frm=stru.from;
+        unsigned two=stru.to;
+        auto iter1=find (allinters.begin(),allinters.end(),frm);
+        auto iter2=find (allinters.begin(), allinters.end(),two);
+        if (iter1==allinters.end()){
+            allinters.push_back(frm);
+        }
+        if (iter2==allinters.end()){
+            allinters.push_back(two);
+        }
+    }
+    return allinters;
+}

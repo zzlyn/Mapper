@@ -1,0 +1,35 @@
+#include "m3.h"
+#include "m1.h"
+using namespace std;
+//extern map<unsigned, StreetSegmentInfo> segmentinfo;
+
+
+vector<unsigned> find_path_between_intersections(unsigned intersect_id_start, unsigned intersect_id_end){
+    vector<unsigned> temp;
+    return temp;
+}
+
+
+double compute_path_travel_time(const vector<unsigned>& path){
+    unsigned size=path.size();
+    if (size==0){
+        return 0;
+    }
+        StreetSegmentInfo temp=getStreetSegmentInfo(path[0]);
+    double runtime=find_street_segment_travel_time(path[0]);
+    unsigned  stid=temp.streetID;
+    for (unsigned p=1; p<size; p++){
+        StreetSegmentInfo temp2=getStreetSegmentInfo(path[p]);
+        if ( temp2.streetID != stid){
+            runtime=runtime+0.25;
+        }
+        stid=temp2.streetID;
+        runtime=runtime+find_street_segment_travel_time(path[p]);
+    }
+    return runtime;
+}
+
+vector<unsigned> find_path_to_point_of_interest (unsigned intersect_id_start, std::string point_of_interest_name){
+    vector<unsigned> temp;
+    return temp;
+}

@@ -1,0 +1,14 @@
+#include "StreetsDatabaseAPI.h"
+#include "m1.h"
+
+using namespace std;
+
+int main() {
+
+    load_map("/cad2/ece297s/public/maps/toronto.streets.bin");
+    
+    // try out your m1.h functions here
+    close_map();
+    
+    return 0;
+}

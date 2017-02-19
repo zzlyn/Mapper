@@ -1,0 +1,108 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+#include "m3.h"
+#include "m2.h"
+#include "OSMDatabaseAPI.h"
+#include "m1.h"
+#include <queue>
+#include <set>
+#include "m4.h"
+#include <algorithm>
+#include <vector>
+
+
+using namespace std;
+
+struct delivery {
+    unsigned intersection;
+    unsigned index;
+
+    delivery(unsigned Intersection, unsigned Index) :
+    intersection(Intersection), index(Index) {
+    }
+
+};
+
+vector<unsigned> traveling_courier(const std::vector<DeliveryInfo>& deliveries, const std::vector<unsigned>& depots) {
+    vector<delivery> total_deliveries;
+    unsigned delivery_info = UNKNOWN;
+    unsigned delivery_index = UNKNOWN;
+    unsigned current_index = UNKNOWN;
+    double current_distance = INFINITYY;
+    unsigned current_depot = UNKNOWN;
+    vector<unsigned> routine;
+    vector<unsigned> part_street_segments;
+
+    for (unsigned b = 0; b < deliveries.size(); b++) {
+        unsigned pick_up = deliveries[b].pickUp;
+        LatLon position1 = getIntersectionPosition(pick_up);
+        for (unsigned a = 0; a < depots.size(); a++) {
+            LatLon position2 = getIntersectionPosition(depots[a]);
+            double new_distance = helper_find_distance(position1, position2);
+            if (new_distance < current_distance) {
+                current_depot = depots[a];
+                current_distance = new_distance;
+                delivery_info = pick_up;
+                delivery_index = b;
+                current_index = b;
+            }
+        }
+        delivery d(pick_up, b);
+        total_deliveries.push_back(d);
+    }
+
+    routine = find_path_between_intersections(current_depot, delivery_info);
+    total_deliveries.erase(total_deliveries.begin() + current_index);
+    delivery a(deliveries[delivery_index].dropOff, delivery_index);
+    total_deliveries.push_back(a);
+
+    while (total_deliveries.size() > 0) {
+        unsigned pre_info = delivery_info;
+        current_distance = INFINITYY;
+        LatLon position1 = getIntersectionPosition(pre_info);
+        //        routine.insert(routine.end(), part_street_segments.begin(), part_street_segments.end());
+        //
+        //        if (delivery_info == deliveries[delivery_index].pickUp) {//change the element;
+        //            total_deliveries[current_index].intersection = deliveries[delivery_index].dropOff;
+        //        } else {
+        //            //if (delivery_info == deliveries[delivery_index].dropOff) {
+        //                total_deliveries.erase(total_deliveries.begin() + current_index);
+        //            //}
+        //        }
+        for (unsigned i = 0; i < total_deliveries.size(); i++) {
+            LatLon position2 = getIntersectionPosition(total_deliveries[i].intersection);
+            double new_distance = helper_find_distance(position1, position2);
+            if (new_distance < current_distance) {
+                current_distance = new_distance;
+                delivery_info = total_deliveries[i].intersection;
+                delivery_index = total_deliveries[i].index;
+                current_index = i;
+            }
+        }
+        part_street_segments = find_path_between_intersections(pre_info, delivery_info);
+        routine.insert(routine.end(), part_street_segments.begin(), part_street_segments.end());
+        total_deliveries.erase(total_deliveries.begin() + current_index);
+        if (delivery_info == deliveries[delivery_index].pickUp) {
+            delivery a(deliveries[delivery_index].dropOff, delivery_index);
+            total_deliveries.push_back(a);
+        }
+    }
+
+    current_distance = INFINITYY;
+    LatLon position1 = getIntersectionPosition(delivery_info);
+    for (unsigned i = 0; i < depots.size(); i++) {
+        LatLon position2 = getIntersectionPosition(depots[i]);
+        double new_distance = helper_find_distance(position1, position2);
+        if (new_distance < current_distance) {
+            current_distance = new_distance;
+            current_depot = depots[i];
+        }
+    }
+    part_street_segments = find_path_between_intersections(current_depot, delivery_info);
+    routine.insert(routine.end(), part_street_segments.begin(), part_street_segments.end());
+    return routine;
+
+}

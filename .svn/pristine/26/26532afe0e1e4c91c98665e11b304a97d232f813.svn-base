@@ -1,0 +1,113 @@
+#include "m2.h"
+#include "m1.h"
+#include <vector>
+#include <algorithm>
+#include <math.h>
+#include <iostream>
+float global;
+using namespace std;
+
+void draw_map() {
+    float inilat = -180;
+    float inilon = -180;
+    float inimlat = 180;
+    float inimlon = 180;
+    for (unsigned i = 0; i < getNumberOfIntersections(); i++) {
+        if (getIntersectionPosition(i).lat > inilat) {
+            inilat = getIntersectionPosition(i).lat;
+        }
+        if (getIntersectionPosition(i).lon > inilon) {
+            inilon = getIntersectionPosition(i).lon;
+        }
+        if (getIntersectionPosition(i).lat < inimlat) {
+            inimlat = getIntersectionPosition(i).lat;
+        }
+        if (getIntersectionPosition(i).lon < inimlon) {
+            inimlon = getIntersectionPosition(i).lon;
+        }
+    }
+
+    init_graphics("Some Example Graphics", WHITE);
+
+    float averageLat = (inimlat + inilat) / 2 * DEG_TO_RAD;
+    global = averageLat;
+    const t_bound_box initial_coords = t_bound_box(inimlon * DEG_TO_RAD * cos(averageLat), inimlat * DEG_TO_RAD, inilon * DEG_TO_RAD * cos(averageLat), inilat * DEG_TO_RAD);
+
+    set_visible_world(initial_coords);
+    drawscreen();
+    event_loop(NULL, NULL, NULL, drawscreen);
+
+}
+
+void drawscreen(void) {
+    set_draw_mode(DRAW_NORMAL); // Should set this if your program does any XOR drawing in callbacks.
+    clearscreen(); /* Should precede drawing for all drawscreens */
+    setfontsize(10);
+    setlinestyle(SOLID);
+    setlinewidth(1);
+    setcolor(BLACK);
+
+
+    drawsegments();
+    drawfeatures();
+}
+
+void drawsegments() {
+
+    //draw street segment lines
+    for (unsigned i = 0; i < getNumberOfStreetSegments(); i++) {
+        StreetSegmentInfo a = getStreetSegmentInfo(i);
+        float y1 = getIntersectionPosition(a.from).lat* DEG_TO_RAD;
+        float y2 = getIntersectionPosition(a.to).lat* DEG_TO_RAD;
+        float x1 = getIntersectionPosition(a.from).lon * DEG_TO_RAD * cos(global);
+        float x2 = getIntersectionPosition(a.to).lon * DEG_TO_RAD * cos(global);
+
+        drawline(x1, y1, x2, y2);
+    }
+}
+
+void drawfeatures() {
+    for (unsigned i = 0; i < getNumberOfFeatures(); i++) {
+        switch (getFeatureType(i)) {
+            //Blue for lakes
+            case Lake:
+            {
+                setcolor(BLUE);
+                t_point tparrlk[getFeaturePointCount(i)];
+                for (unsigned k = 0; k < getFeaturePointCount(i); k++) {
+                    tparrlk[k].x = getFeaturePoint(i, k).lon * cos(global) * DEG_TO_RAD;
+                    tparrlk[k].y = getFeaturePoint(i, k).lat*DEG_TO_RAD;
+                }
+
+                fillpoly(tparrlk, getFeaturePointCount(i));
+                continue;
+            }
+            //Green for green spaces
+            case Greenspace:
+            {
+                setcolor(GREEN);
+                t_point tparrgs[getFeaturePointCount(i)];
+                for (unsigned k = 0; k < getFeaturePointCount(i); k++) {
+                    tparrgs[k].x = getFeaturePoint(i, k).lon * cos(global) * DEG_TO_RAD;
+                    tparrgs[k].y = getFeaturePoint(i, k).lat*DEG_TO_RAD;
+                }
+
+                fillpoly(tparrgs, getFeaturePointCount(i));
+                continue;
+            }
+            //light grey for buildings
+            case Building:
+            {
+                setcolor(LIGHTGREY);
+                t_point tparrgs[getFeaturePointCount(i)];
+                for (unsigned k = 0; k < getFeaturePointCount(i); k++) {
+                    tparrgs[k].x = getFeaturePoint(i, k).lon * cos(global) * DEG_TO_RAD;
+                    tparrgs[k].y = getFeaturePoint(i, k).lat*DEG_TO_RAD;
+                }
+
+                fillpoly(tparrgs, getFeaturePointCount(i));
+                continue;
+            }
+        }
+    }
+}

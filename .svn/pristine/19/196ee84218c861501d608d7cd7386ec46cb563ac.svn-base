@@ -1,0 +1,205 @@
+#include "StreetsDatabaseAPI.h"
+#include "m1.h"
+#include <vector>
+#include <algorithm>
+#include <map>
+#include <unordered_map>
+#include "intersectionInfo.h"
+using namespace std;
+//load the map
+
+unordered_multimap<string, unsigned> FindID; //CHANGED FROM MULTIMAP
+unordered_multimap<unsigned, vector<unsigned>> findStreetFromStreet; //CHANGED FROM MULTIMAP
+vector<vector<unsigned>> segofintersections;
+
+bool load_map(std::string map_name) {
+
+    bool load_success = loadStreetsDatabaseBIN(map_name);
+
+    for (unsigned i = 0; i < getNumberOfStreets(); i++) {
+        FindID.insert(make_pair(getStreetName(i), i));
+    }
+
+    for (unsigned i = 0; i < getNumberOfStreetSegments(); i++) {
+        StreetSegmentInfo c = getStreetSegmentInfo(i);
+        auto iter=findStreetFromStreet.find(c.streetID);
+        if (iter==findStreetFromStreet.end()){
+            vector<unsigned> segvec;
+            segvec.push_back(i);
+            findStreetFromStreet.insert(make_pair(c.streetID,segvec));
+        }else{
+            iter->second.push_back(i);
+        }
+    }
+    
+    for (unsigned k = 0; k < getNumberOfIntersections(); k++) {
+        vector<unsigned> realid;
+        for (unsigned l=0; l<getIntersectionStreetSegmentCount(k); l++)
+        {
+            realid.push_back(getIntersectionStreetSegment(k, l));
+
+        }
+        segofintersections.push_back(realid);
+    }
+    
+    // create any data structures here to speed up your API functions
+    // ...
+
+
+    return load_success;
+}
+
+//close the map
+
+void close_map() {
+    closeStreetDatabase();
+
+    // destroy/clear any data structures you created in load_map
+    // ...
+}
+
+//implement the rest of the functions provided in m1.h
+// ...
+
+vector<unsigned> find_street_ids_from_name(std::string street_name) {
+    vector<unsigned> street_ids;
+    auto range = FindID.equal_range(street_name);
+    for (auto iter = range.first; iter != range.second; iter++) {
+        street_ids.push_back(iter->second);
+    }
+    /*for(int i=0; i< getNumberOfStreets()-1; i++){
+    if(getStreetName(i)==street_name)
+        street_ids.push_back(i);
+    }*/
+
+    return street_ids;
+}
+
+vector<unsigned> find_intersection_street_segments(unsigned intersection_id) {
+    return segofintersections[intersection_id];
+
+}
+
+vector<std::string> find_intersection_street_names(unsigned intersection_id) {
+    
+    vector<unsigned> segids = find_intersection_street_segments(intersection_id);
+    vector<string> stnames;
+    
+    for (unsigned a=0; a< segids.size(); a++) {
+        stnames.push_back(getStreetName(segids[a]));
+    }
+     
+    return stnames;
+}
+
+bool are_directly_connected(unsigned intersection_id1, unsigned intersection_id2) {
+    if (intersection_id1 == intersection_id2){
+        return true;
+    }
+    vector<unsigned> segids = find_intersection_street_segments(intersection_id1);
+    
+    for (auto iter = segids.begin(); iter != segids.end(); iter++) {
+        StreetSegmentInfo a = getStreetSegmentInfo(*iter);
+        
+        if ((a.from == intersection_id1)&&(a.to == intersection_id2)) {
+            return true;
+        } else if ((a.from == intersection_id2)&&(a.to == intersection_id1)&&(a.oneWay == false)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+vector<unsigned> find_street_street_segments(unsigned street_id) {
+    
+    return (findStreetFromStreet.find(street_id))->second;
+
+}
+
+vector<unsigned> find_all_street_intersections(unsigned street_id) {
+    
+    vector<unsigned> segids;
+    
+    vector<unsigned> allinters;
+    /*
+    segids = find_street_street_segments(street_id);
+    for (auto iter = segids.begin(); iter != segids.end(); iter++) {
+        StreetSegmentInfo stru = getStreetSegmentInfo(*iter);
+        unsigned frm = stru.from;
+        unsigned two = stru.to;
+        auto iter1 = find(allinters.begin(), allinters.end(), frm);
+        auto iter2 = find(allinters.begin(), allinters.end(), two);
+        if (iter1 == allinters.end()) {
+            allinters.push_back(frm);
+        }
+        if (iter2 == allinters.end()) {
+            allinters.push_back(two);
+        }
+    }
+     */
+    return allinters;
+}
+
+vector<unsigned> find_adjacent_intersections(unsigned intersection_id) {
+    vector<unsigned> streetSegID = find_intersection_street_segments(intersection_id);
+    vector<unsigned> intersectionID;
+    
+    for (auto iter = streetSegID.begin(); iter != streetSegID.end(); iter++) {
+        StreetSegmentInfo stru = getStreetSegmentInfo(*iter);
+        unsigned frm = stru.from;
+        unsigned two = stru.to;
+        if (frm == intersection_id) {
+            if (are_directly_connected(frm, two)) //check if it is one-way
+                intersectionID.push_back(two);
+        } else {
+            if (are_directly_connected(two, frm)) //check if it is one-way
+                intersectionID.push_back(frm);
+        }
+    }
+    sort( intersectionID.begin(), intersectionID.end() );
+    intersectionID.erase( unique( intersectionID.begin(), intersectionID.end() ), intersectionID.end() );
+    
+    return intersectionID;
+}
+
+std::vector<unsigned> find_intersection_ids_from_street_names(std::string street_name1, std::string street_name2) {
+    vector <unsigned> a;
+    return a;
+}
+
+//find distance between two coordinates
+
+double find_distance_between_two_points(LatLon point1, LatLon point2) {
+    return 0;
+}
+
+//find the length of a given street segment
+
+double find_street_segment_length(unsigned street_segment_id) {
+    return 0;
+}
+
+//find the length of a whole street
+
+double find_street_length(unsigned street_id) {
+    return 0;
+}
+
+//find the travel time to drive a street segment (time(minutes) = distance(km)/speed_limit(km/hr) * 60
+
+double find_street_segment_travel_time(unsigned street_segment_id) {
+    return 0;
+}
+
+//find the nearest point of interest to a given position
+
+unsigned find_closest_point_of_interest(LatLon my_position) {
+
+    return 0;
+}
+
+//find the nearest intersection (by ID) to a given position
+
+unsigned find_closest_intersection(LatLon my_position) {
+    return 0;
+}

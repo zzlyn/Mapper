@@ -1,0 +1,87 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+#include "m3.h"
+#include "m2.h"
+#include "OSMDatabaseAPI.h"
+#include "m1.h"
+#include <queue>
+#include <set>
+#include "m4.h"
+#include <algorithm>
+#include <vector>
+using namespace std;
+
+vector<unsigned> traveling_courier(const std::vector<DeliveryInfo>& deliveries, const std::vector<unsigned>& depots) {
+    vector<pair<unsigned, unsigned>> total_deliveries;
+    unsigned delivery_info = UNKNOWN;
+    unsigned delivery_index = UNKNOWN;
+    unsigned current_index = UNKNOWN;
+    double current_time = INFINITYY;
+    double current_distance=INFINITYY;
+    unsigned current_depot=UNKNOWN;
+    vector<unsigned> routine;
+    vector<unsigned> part_street_segments;
+
+    total_deliveries.resize(deliveries.size());
+
+    for (unsigned b = 0; b < deliveries.size(); b++) {
+        unsigned pick_up = deliveries[b].pickUp;
+        LatLon point1=getIntersectionPosition(pick_up);
+        for (unsigned a = 0; a < depots.size(); a++) {
+            LatLon point2= getIntersectionPosition(depots[a]);
+            double new_distance=helper_find_distance(point1, point2);
+            if (new_distance < current_distance) {
+                current_distance = new_distance;
+                delivery_info = pick_up;
+                delivery_index = b;
+                current_depot=a;
+                current_index = b;
+            }
+        }
+        total_deliveries[b].first = pick_up;
+        total_deliveries[b].second = b;
+    }
+    part_street_segments=find_path_between_intersections(current_depot,delivery_info);
+
+    while (total_deliveries.size() > 0) {
+        current_distance = INFINITYY;
+        LatLon point1=getIntersectionPosition(delivery_info);
+        routine.insert(routine.end(), part_street_segments.begin(), part_street_segments.end());
+        
+        if (delivery_info == deliveries[delivery_index].pickUp) {//change the element;
+            total_deliveries[current_index].first = deliveries[delivery_index].dropOff;
+        } else {
+            if (delivery_info == deliveries[delivery_index].dropOff) {
+                total_deliveries.erase(total_deliveries.begin() + current_index);
+            }
+        }
+        for (unsigned i = 0; i < total_deliveries.size(); i++) {
+            unsigned delivery_intersection=total_deliveries[i].first;
+            LatLon point2 = getIntersectionPosition(delivery_intersection);
+            double new_distance = helper_find_distance(point1, point2);
+            if (new_distance < current_distance) {
+                part_street_segments=find_path_between_intersections(delivery_info,delivery_intersection);
+                current_distance = new_distance;
+                delivery_info = delivery_intersection;
+                delivery_index = total_deliveries[i].second;
+                current_index = i; 
+            }
+        }
+
+    }
+    current_time = INFINITYY;
+    for (unsigned a = 0; a < depots.size(); a++) {
+        vector<unsigned> path = find_path_between_intersections(delivery_info, depots[a]);
+        double new_time = compute_path_travel_time(path);
+        if (new_time < current_time) {
+            part_street_segments = path;
+        }
+    }
+    routine.insert(routine.end(), part_street_segments.begin(), part_street_segments.end());
+
+    return routine;
+
+}

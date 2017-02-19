@@ -1,0 +1,851 @@
+#include "m2.h"
+#include "OSMDatabaseAPI.h"
+#include "m1.h"
+#include <vector>
+#include <algorithm>
+#include <math.h>
+#include <istream>
+#include <iostream>
+#define ZOOM_FACTOR  1.6667
+
+float cosavelat;
+using namespace std;
+const t_bound_box initial_coords;
+float maxh;
+float maxw;
+
+// Draws the map. You can assume your load_map (string map_name)
+// function is called before this function in the unit tests.
+// Your main () program should do the same.
+void draw_map() {
+    float inilat = -180;
+    float inilon = -180;
+    float inimlat = 180;
+    float inimlon = 180;
+    for (unsigned i = 0; i < getNumberOfIntersections(); i++) {
+        if (getIntersectionPosition(i).lat > inilat) {
+            inilat = getIntersectionPosition(i).lat;
+        }
+        if (getIntersectionPosition(i).lon > inilon) {
+            inilon = getIntersectionPosition(i).lon;
+        }
+        if (getIntersectionPosition(i).lat < inimlat) {
+            inimlat = getIntersectionPosition(i).lat;
+        }
+        if (getIntersectionPosition(i).lon < inimlon) {
+            inimlon = getIntersectionPosition(i).lon;
+        }
+    }
+
+    init_graphics("My GIS", t_color(0XE9, 0XE4, 0XDE));
+    create_button("Window", "Search", search);
+    float averageLat = (inimlat + inilat) / 2 * DEG_TO_RAD;
+    cosavelat = cos(averageLat);
+    t_point bottomleft(inimlon * DEG_TO_RAD * cosavelat, inimlat * DEG_TO_RAD);
+    maxh = inilat * DEG_TO_RAD - inimlat * DEG_TO_RAD;
+    maxw = inilon * DEG_TO_RAD * cosavelat - inimlon * DEG_TO_RAD * cosavelat;
+    t_bound_box initial_coords = t_bound_box(bottomleft, maxw, maxh);
+
+    set_visible_world(initial_coords);
+    drawscreen();
+    event_loop(act, NULL, NULL, drawscreen);
+
+    close_graphics();
+
+}
+
+<<<<<<< .mine
+//Function to perform a search if user clicks on the button
+void search(void (*drawscreen_ptr) (void)) {//function to search items
+    while (1) {
+        cout << "What do you want to search for?(street/POI/feature) ";
+        string type;
+        getline(cin, type);
+        if (type == "POI") {
+            cout << "Enter the name of POI: ";
+            string name;
+            getline(cin, name);
+            for (unsigned a = 0; a < getNumberOfPointsOfInterest(); a++) {//traverse all the number of interest 
+                if (name == getPointOfInterestName(a)) {//find the matching name
+                    cout << "Found It!!!" << endl;
+                    LatLon temp = getPointOfInterestPosition(a); //get the latitude and longitude of of the interest position
+                    float tempx = temp.lon * DEG_TO_RAD*cosavelat; //change the longitude to x
+                    float tempy = temp.lat*DEG_TO_RAD; //change the latitude to y
+                    zoom_fit(drawscreen); //set the degree of zoom
+                    for (int count = 0; count < 11; count++) {
+                        handle_zoom_in(tempx, tempy, drawscreen); //zoom in to the position of 
+                    }
+
+                    drawscreen();
+                    return;
+                }
+            }
+            cout << "CANT FIND POI!!!!!" << endl;
+            return;
+        } else if (type == "street") {
+            cout << "enter the name of street: ";
+            string name;
+            getline(cin, name);
+            for (unsigned a = 0; a < getNumberOfStreets(); a++) {
+                if (name == getStreetName(a)) {
+                    cout << "Found It!!!" << endl;
+                    vector<unsigned> streetID = find_street_ids_from_name(name);
+                    float x = findCenterPoint(streetID[0]).lon * DEG_TO_RAD*cosavelat;
+                    float y = findCenterPoint(streetID[0]).lat * DEG_TO_RAD;
+                    zoom_fit(drawscreen);
+                    for (int count = 0; count < 7; count++) {
+                        handle_zoom_in(x, y, drawscreen);
+                    }
+                    drawscreen();
+                    return;
+                }
+            }
+            cout << "CANT FIND STREET!!!!!" << endl;
+            return;
+        } else {
+            cout << "ENTER VALID TYPE PLEASE!!!" << endl;
+        }
+    }
+}
+
+//Function to select/highlight intersection/POI user clicks on
+void act(float x, float y, t_event_buttonPressed event) {
+    drawscreen();
+    setlinewidth(3);
+    LatLon clickposition;
+    clickposition.lat = y / DEG_TO_RAD;
+    clickposition.lon = x / DEG_TO_RAD / cosavelat;
+    unsigned inter = find_closest_intersection(clickposition);
+    float interdis = helper_find_distance(getIntersectionPosition(inter), clickposition);
+    unsigned poi = find_closest_point_of_interest(clickposition);
+    float poidis = helper_find_distance(getPointOfInterestPosition(poi), clickposition);
+    float diff = get_visible_world().get_height() / 80;
+
+
+    if ((interdis < poidis) && interdis <= diff * EARTH_RADIUS_IN_METERS) {
+        setcolor(MAGENTA);
+        float x = getIntersectionPosition(inter).lon * DEG_TO_RAD*cosavelat;
+        float y = getIntersectionPosition(inter).lat*DEG_TO_RAD;
+        drawarc(x, y, diff, 0, 360);
+        drawline(x - 2 * diff, y, x + 2 * diff, y);
+        drawline(x, y + 2 * diff, x, y - 2 * diff);
+        cout << "***********************************" << endl << "Intersection Info: " << endl << "    ID: " << inter << endl << "  Streets: ";
+        for (unsigned count = 0; count < getIntersectionStreetSegmentCount(inter) - 1; count++) {
+            StreetSegmentInfo tempstreet = getStreetSegmentInfo(getIntersectionStreetSegment(inter, count));
+            cout << getStreetName(tempstreet.streetID) << " & ";
+        }
+        StreetSegmentInfo tempstreet = getStreetSegmentInfo(getIntersectionStreetSegment(inter, getIntersectionStreetSegmentCount(inter) - 1));
+        cout << getStreetName(tempstreet.streetID) << endl;
+        cout << "***********************************" << endl << endl;
+    } else if ((interdis > poidis) && poidis <= diff * EARTH_RADIUS_IN_METERS) {
+        setcolor(MAGENTA);
+        float x = getPointOfInterestPosition(poi).lon * DEG_TO_RAD*cosavelat;
+        float y = getPointOfInterestPosition(poi).lat*DEG_TO_RAD;
+        drawarc(x, y, diff, 0, 360);
+        drawline(x - 2 * diff, y, x + 2 * diff, y);
+        drawline(x, y + 2 * diff, x, y - 2 * diff);
+        cout << "***********************************" << endl << "Point of Interest Info: " << endl << "    ID: " << poi << endl << "    Name: ";
+        cout << getPointOfInterestName(poi) << endl;
+        cout << "    Type: " << getPointOfInterestType(poi) << endl;
+        cout << "***********************************" << endl << endl;
+    }
+
+    // Redraw screen to show the new line.  Could do incrementally, but this is easier.
+}
+
+=======
+>>>>>>> .r37
+
+//Draws the screen, this function is called everytime "drawscreen" is triggered in 
+//draw_map()
+void drawscreen(void) {
+    set_draw_mode(DRAW_NORMAL); // Should set this if your program does any XOR drawing in callbacks.
+    clearscreen(); /* Should precede drawing for all drawscreens */
+    setfontsize(10);
+    setlinestyle(SOLID);
+    setlinewidth(1);
+    setcolor(BLACK);
+    drawfeatures_lake_shoreline(); //draw the lake and the shoreline
+    drawfeatures_island(); //draw the islands
+    drawfeatures_park_beach_golfcourse(); //draw the golf courses and the pink beaches 
+    drawfeatures_greenspace(); //draw the grassland
+    drawfeatures_river_stream(); //draw the river and the stream
+    drawsegments(); //draw all the street segments
+    drawfeatures_building(); //draw all the buildings
+    if (get_visible_world().get_height() <= maxh / 10) {
+        showPOI();
+    }
+    drawcompass();
+}
+
+<<<<<<< .mine
+//Draws street segments, street lines and Didication of oneway streets
+void drawsegments() {
+=======
+void drawsegments() {//draw all the street segments
+>>>>>>> .r37
+    float ratio = maxh / get_visible_world().get_height();
+    ratio = pow(ratio, 0.66); //we use the ratio to design the width of the line
+    //draw street segment lines
+    for (unsigned a = 0; a < getNumberOfStreets(); a++) {//traverse all the streets
+        vector<unsigned> streetSegID = find_street_street_segments(a); //put all the street segments ID in a vector according to the street ID
+        float length = find_street_length(a); //get the total length of the street
+        if (ratio <= 2 && (length <= 2500 || getStreetName(a) == "<unknown>")) {//filter the street
+            continue;
+        }
+        if (ratio <= 2.5 && (length <= 1700 || getStreetName(a) == "<unknown>")) {//filter the street
+            continue;
+        }
+        if (ratio <= 3 && (length <= 1000 || getStreetName(a) == "<unknown>")) {//filter the street
+            continue;
+        }
+        if (ratio <= 4 && (length <= 600 || getStreetName(a) == "<unknown>")) {//filter the street
+            continue;
+        }
+        if (ratio <= 5 && (length <= 400 || getStreetName(a) == "<unknown>")) {//filter the street
+            continue;
+        }
+        unsigned size = streetSegID.size();
+        for (unsigned b = 0; b < size; b++) {//get the street segment ID from specific street ID
+            setcolor(WHITE);
+            unsigned i = streetSegID[b]; //get the specific street segment ID
+            StreetSegmentInfo info = getStreetSegmentInfo(i); //get the information of the street segment
+            float radius; //use radius to design the street length
+            float spdlmt = info.speedLimit; //get the speed limit of the street segment
+            if (spdlmt == 50) {//alternatively: spdlmt<=60/70/80
+                setlinewidth(1 * ratio);
+                radius = ratio / 2;
+            } else {//speed limit is greater than 50 km/h
+                radius = spdlmt / 100 * 2.5 * ratio;
+                setlinewidth(2 * radius);
+            }
+            if (getStreetName(info.streetID) == "<unknown>") {//we set line width to be one with the unknown street name   
+                setlinewidth(1); //so that the map looks more clear
+            }
+            if (spdlmt == 100 && length >= 2000 && getStreetName(a) != "<unknown>") {//draw some street segments with unknown name 
+                setcolor(ORANGE); // we use orange on high speed ways
+            }
+            if (spdlmt > 70 && spdlmt < 100 && getStreetName(a) != "<unknown>") {//draw some street segments with unknown name
+                setcolor(LIGHTGREY); // we use light grey for middle speed ways
+            }
+<<<<<<< .mine
+            float y1 = getIntersectionPosition(an.from).lat* DEG_TO_RAD;
+            float y2 = getIntersectionPosition(an.to).lat* DEG_TO_RAD;
+            float x1 = getIntersectionPosition(an.from).lon * DEG_TO_RAD * cosavelat;
+            float x2 = getIntersectionPosition(an.to).lon * DEG_TO_RAD * cosavelat;
+=======
+            float y1 = getIntersectionPosition(info.from).lat* DEG_TO_RAD; //get the Y coordinates of one intersection
+            float y2 = getIntersectionPosition(info.to).lat* DEG_TO_RAD; //get the Y coordinates of another intersection
+            float x1 = getIntersectionPosition(info.from).lon * DEG_TO_RAD * global; //get the X coordinates of one intersection
+            float x2 = getIntersectionPosition(info.to).lon * DEG_TO_RAD * global; //get the X coordinates of another intersection
+>>>>>>> .r37
+
+            float currx = x1; //we use this two variables to draw the street segments with the curve point(s) 
+            float curry = y1;
+<<<<<<< .mine
+            for (unsigned k = 0; k < getStreetSegmentInfo(i).curvePointCount; k++) {
+                drawline(currx, curry, getStreetSegmentCurvePoint(i, k).lon * DEG_TO_RAD*cosavelat, getStreetSegmentCurvePoint(i, k).lat * DEG_TO_RAD);
+                currx = getStreetSegmentCurvePoint(i, k).lon * DEG_TO_RAD*cosavelat;
+=======
+            for (unsigned k = 0; k < getStreetSegmentInfo(i).curvePointCount; k++) {//go through all the curve points
+                drawline(currx, curry, getStreetSegmentCurvePoint(i, k).lon * DEG_TO_RAD*global, getStreetSegmentCurvePoint(i, k).lat * DEG_TO_RAD); //draw the line from the current point to the next point
+                currx = getStreetSegmentCurvePoint(i, k).lon * DEG_TO_RAD*global; //set the current point
+>>>>>>> .r37
+                curry = getStreetSegmentCurvePoint(i, k).lat*DEG_TO_RAD;
+                //                if (ratio >= 15) {
+                //                    fillarc(currx, curry, get_visible_world().get_height() / 100, 0, 360); //need to convert linewidth to usable length
+                //                }
+            }
+            drawline(currx, curry, x2, y2); //draw the line from the last curve point to the end point
+            // now the draw the arrow for the one-way road
+            if (ratio < 10) {// filter the arrow
+                continue;
+            }
+            if (ratio <= 23 && getStreetName(info.streetID) == "<unknown>") {//filter the arrow
+                continue;
+            }
+<<<<<<< .mine
+            if (info.oneWay == true) {
+                if (info.curvePointCount == 0) {
+                    LatLon point1 = getIntersectionPosition(info.from);
+                    LatLon point2 = getIntersectionPosition(info.to);
+                    float theta = atan((point1.lat - point2.lat) / ((point1.lon - point2.lon) * cosavelat));
+                    settextrotation(theta / DEG_TO_RAD);
+=======
+            if (info.oneWay == true) {//check if it is one-way road
+                if (info.curvePointCount == 0) {//street segment without curve point condition
+                    LatLon point1 = getIntersectionPosition(info.from); //get the latitude and longitude of the start point
+                    LatLon point2 = getIntersectionPosition(info.to); //get the latitude and longitude of the end point
+                    float theta = atan((point1.lat - point2.lat) / ((point1.lon - point2.lon) * global)); //get the angle that needs to rotation the arrow
+                    settextrotation(theta / DEG_TO_RAD); //rotation
+>>>>>>> .r37
+                    setcolor(BLACK);
+                    float ratio = maxh / get_visible_world().get_height(); //we use the ratio to design the size of the arrow
+                    ratio = 40 / (ratio + 10) + 6;
+                    ratio = 0.02 * pow(ratio - 8, 2) + 9;
+<<<<<<< .mine
+                    float x = (point1.lon + point2. lon) / 2 * DEG_TO_RAD*cosavelat;
+                    float y = (point1.lat + point2.lat) / 2 * DEG_TO_RAD;
+                    setfontsize(ratio);
+                    drawtext(x, y, "→", 1000, 1000);
+=======
+                    float x = (point1.lon + point2. lon) / 2 * DEG_TO_RAD*global; //get the X coordinate of the middle point
+                    float y = (point1.lat + point2.lat) / 2 * DEG_TO_RAD; //get the y coordinate of the middle point
+                    setfontsize(ratio); // set the font size
+                    drawtext(x, y, "→", 1000, 1000); //draw the arrow 
+>>>>>>> .r37
+                    settextrotation(0);
+<<<<<<< .mine
+                } else {
+                    LatLon point1 = getIntersectionPosition(info.from);
+                    LatLon point2 = getStreetSegmentCurvePoint(temp[b], 0);
+                    float theta = atan((point1.lat - point2.lat) / ((point1.lon - point2.lon) * cosavelat));
+                    settextrotation(theta / DEG_TO_RAD);
+=======
+                } else {// street segments with curve point(s) condition
+                    LatLon point1 = getIntersectionPosition(info.from); //get the latitude and longitude of the start point
+                    LatLon point2 = getStreetSegmentCurvePoint(streetSegID[b], 0); //get the latitude and longitude of the first curve point
+                    float theta = atan((point1.lat - point2.lat) / ((point1.lon - point2.lon) * global)); //get the angle that needs to rotation the arrow
+                    settextrotation(theta / DEG_TO_RAD); //rotation
+>>>>>>> .r37
+                    setcolor(BLACK);
+                    float ratio = maxh / get_visible_world().get_height(); //we use the ratio to design the size of the arrow
+                    ratio = 40 / (ratio + 10) + 6;
+                    ratio = 0.02 * pow(ratio - 8, 2) + 9;
+<<<<<<< .mine
+                    float x = (point1.lon + point2. lon) / 2 * DEG_TO_RAD*cosavelat;
+                    float y = (point1.lat + point2.lat) / 2 * DEG_TO_RAD;
+                    setfontsize(ratio);
+                    drawtext(x, y, "→", 1000, 1000);
+=======
+                    float x = (point1.lon + point2. lon) / 2 * DEG_TO_RAD*global; //get the X coordinate of the middle point
+                    float y = (point1.lat + point2.lat) / 2 * DEG_TO_RAD; //get the y coordinate of the middle point
+                    setfontsize(ratio); // set the font size
+                    drawtext(x, y, "→", 1000, 1000); //draw the arrow 
+>>>>>>> .r37
+                    settextrotation(0);
+                }
+            }
+
+
+        }
+
+    }
+    //now we filter the name of the streets
+    for (unsigned a = 0; a < getNumberOfStreets(); a++) {
+        float length = find_street_length(a); //get the total length of the street
+        vector<unsigned> temp = find_street_street_segments(a); //get street segment ID from the street ID
+        unsigned long long totalCurvePoints = 0; // the total curve point of one street
+        for (unsigned b = 0; b < temp.size(); b++) {
+            totalCurvePoints = getStreetSegmentInfo(temp[b]).curvePointCount + totalCurvePoints; // get the total curve point of one street
+        }
+        if (ratio <= 2 && (length <= 22000 || totalCurvePoints < 250 || getStreetName(a) == "<unknown>")) {//filter 
+            continue;
+        }
+        if (ratio <= 3 && (length <= 11000 || totalCurvePoints < 10 || getStreetName(a) == "<unknown>")) {//filter 
+            continue;
+        }
+        if (ratio <= 4 && (length <= 5000 || totalCurvePoints < 10 || getStreetName(a) == "<unknown>")) {//filter 
+            continue;
+        }
+        if (ratio <= 5 && (length <= 2200 || totalCurvePoints < 5 || getStreetName(a) == "<unknown>")) {//filter 
+            continue;
+        }
+        if (ratio <= 6 && (length <= 700 || totalCurvePoints < 5 || getStreetName(a) == "<unknown>")) {//filter 
+            continue;
+        }
+        if (ratio <= 7 && length <= 400) {//filter 
+            continue;
+        }
+        drawStreetName(a); // draw the street name
+        setlinewidth(1);
+    }
+}
+
+<<<<<<< .mine
+//Draw features part
+//Draws different kind of features, split up into different functions to show layers
+void drawfeatures_park_beach_golfcourse() {
+=======
+void drawfeatures_park_beach_golfcourse() {// draw the golf courses and the park and beaches
+>>>>>>> .r37
+    for (unsigned i = 0; i < getNumberOfFeatures(); i++) {
+        switch (getFeatureType(i)) {
+                //Blue for lakes
+            case Park://draw the park first
+            {
+                if (get_visible_world().get_height() / maxh >= 0.2) {//filter
+                    continue;
+                }
+                setcolor(t_color(0XA6, 0XD6, 0X5C)); // set color
+                drawafeature(i);
+                continue;
+            }
+            case Beach://then draw the beaches
+            {
+                setcolor(t_color(0XFF, 0XF2, 0XAB)); //set color
+                drawafeature(i);
+                continue;
+            }
+
+            case Golfcourse://last draw the golf courses
+            {
+                setcolor(t_color(0X00, 0XA6, 0X53)); // set color
+                drawafeature(i);
+                continue;
+            }
+        }
+    }
+}
+
+void drawfeatures_greenspace() {//draw the grassland
+    for (unsigned i = 0; i < getNumberOfFeatures(); i++) {
+        switch (getFeatureType(i)) {
+                //Green for green spaces
+            case Greenspace:
+            {
+                setcolor(t_color(0XCB, 0XDF, 0XAC)); //set colour
+                drawafeature(i);
+                continue;
+            }
+        }
+    }
+}
+
+void drawfeatures_building() {//draw the building
+    for (unsigned i = 0; i < getNumberOfFeatures(); i++) {
+        switch (getFeatureType(i)) {
+            case Building:
+            {
+                if (get_visible_world().get_height() / maxh >= 0.15) {
+                    continue;
+                }
+                setcolor(t_color(0XF4, 0XF3, 0XEE)); //set color
+                drawafeature(i);
+                continue;
+            }
+        }
+    }
+}
+
+<<<<<<< .mine
+void drawfeatures_lake_shoreline() {
+    for (unsigned i = 0; i < getNumberOfFeatures(); i++) {
+        switch (getFeatureType(i)) {
+                //Blue for lakes
+            case Lake:
+            {
+                setcolor(t_color(0XB7, 0XDA, 0XFF));
+                drawafeature(i);
+                continue;
+            }
+
+                //Green for green spaces
+            case Shoreline:
+            {
+                setcolor(t_color(0XC7, 0XE2, 0XFF));
+                drawafeature(i);
+                continue;
+            }
+=======
+void act(float x, float y, t_event_buttonPressed event) {//when user press some bottom, do something
+    drawscreen();
+    setlinewidth(3);
+    LatLon clickposition; // the position that user clicks
+    clickposition.lat = y / DEG_TO_RAD; // get the latitude of the clicking position
+    clickposition.lon = x / DEG_TO_RAD / global; // get the longitude of the clicking position
+    unsigned inter = find_closest_intersection(clickposition);
+    float interdis = helper_find_distance(getIntersectionPosition(inter), clickposition);
+    unsigned poi = find_closest_point_of_interest(clickposition);
+    float poidis = helper_find_distance(getPointOfInterestPosition(poi), clickposition);
+    float diff = get_visible_world().get_height() / 80;
+
+
+    if ((interdis < poidis) && interdis <= diff * EARTH_RADIUS_IN_METERS) {
+        setcolor(MAGENTA);
+        float x = getIntersectionPosition(inter).lon * DEG_TO_RAD*global;
+        float y = getIntersectionPosition(inter).lat*DEG_TO_RAD;
+        drawarc(x, y, diff, 0, 360);
+        drawline(x - 2 * diff, y, x + 2 * diff, y);
+        drawline(x, y + 2 * diff, x, y - 2 * diff);
+        cout << "***********************************" << endl << "Intersection Info: " << endl << "    ID: " << inter << endl << "  Streets: ";
+        for (unsigned count = 0; count < getIntersectionStreetSegmentCount(inter) - 1; count++) {
+            StreetSegmentInfo tempstreet = getStreetSegmentInfo(getIntersectionStreetSegment(inter, count));
+            cout << getStreetName(tempstreet.streetID) << " & ";
+        }
+        StreetSegmentInfo tempstreet = getStreetSegmentInfo(getIntersectionStreetSegment(inter, getIntersectionStreetSegmentCount(inter) - 1));
+        cout << getStreetName(tempstreet.streetID) << endl;
+        cout << "***********************************" << endl << endl;
+    } else if ((interdis > poidis) && poidis <= diff * EARTH_RADIUS_IN_METERS) {
+        setcolor(MAGENTA);
+        float x = getPointOfInterestPosition(poi).lon * DEG_TO_RAD*global;
+        float y = getPointOfInterestPosition(poi).lat*DEG_TO_RAD;
+        drawarc(x, y, diff, 0, 360);
+        drawline(x - 2 * diff, y, x + 2 * diff, y);
+        drawline(x, y + 2 * diff, x, y - 2 * diff);
+        cout << "***********************************" << endl << "Point of Interest Info: " << endl << "    ID: " << poi << endl << "    Name: ";
+        cout << getPointOfInterestName(poi) << endl;
+        cout << "    Type: " << getPointOfInterestType(poi) << endl;
+        cout << "***********************************" << endl << endl;
+    }
+
+    // Redraw screen to show the new line.  Could do incrementally, but this is easier.
+}
+
+void search(void (*drawscreen_ptr) (void)) {//function to search items
+    while (1) {
+        cout << "What do you want to search for?(street/POI/feature) ";
+        string type;
+        getline(cin, type); // the thing you need to find
+        if (type == "POI") {//find the point of interest
+            cout << "Enter the name of POI: ";
+            string name;
+            getline(cin, name);
+            for (unsigned a = 0; a < getNumberOfPointsOfInterest(); a++) {//traverse all the number of interest 
+                if (name == getPointOfInterestName(a)) {//find the matching POI name
+                    cout << "Found It!!!" << endl;
+                    LatLon temp = getPointOfInterestPosition(a); //get the latitude and longitude of of the interest position
+                    float tempx = temp.lon * DEG_TO_RAD*global; //change the longitude to x
+                    float tempy = temp.lat*DEG_TO_RAD; //change the latitude to y
+                    zoom_fit(drawscreen);
+                    for (int count = 0; count < 11; count++) {
+                        handle_zoom_in(tempx, tempy, drawscreen); //zoom in to the position of POI
+                    }
+
+                    drawscreen();
+                    return;
+                }
+            }
+            cout << "CANT FIND POI!!!!!" << endl; //POI does not exist
+            return;
+        } else if (type == "street") {//find the street
+            cout << "enter the name of street: ";
+            string name;
+            getline(cin, name);
+            for (unsigned a = 0; a < getNumberOfStreets(); a++) {
+                if (name == getStreetName(a)) {//find the matching street name
+                    cout << "Found It!!!" << endl;
+                    vector<unsigned> streetID = find_street_ids_from_name(name); // get all the street segment ID of the specific street ID
+                    float x = findCenterPoint(streetID[0]).lon * DEG_TO_RAD*global; // get the X coordinate of the center of the street
+                    float y = findCenterPoint(streetID[0]).lat * DEG_TO_RAD; // get the Y coordinate of the center of the street
+                    zoom_fit(drawscreen); //set the degree of zooming
+                    for (int count = 0; count < 7; count++) {
+                        handle_zoom_in(x, y, drawscreen); //zoom in to the street
+                    }
+                    drawscreen();
+                    return;
+                }
+            }
+            cout << "CANT FIND STREET!!!!!" << endl; //street name does not exist
+            return;
+        } else {
+            cout << "ENTER VALID TYPE PLEASE!!!" << endl; //user enter the invalid type of things
+        }
+    }
+}
+
+void showPOI() {
+    float ratio = maxh / get_visible_world().get_height();
+    float ratio1 = pow(ratio, 0.4);
+    float ratio2 = pow(ratio + 200, 0.4);
+    setfontsize(ratio2);
+    //cout<<ratio<<endl;
+    for (unsigned k = 0; k < getNumberOfPointsOfInterest(); k++) {
+        if (ratio1 <= 5 && ((getPointOfInterestType(k) != "bus_station")&&(getPointOfInterestType(k) != "public_building")&&(getPointOfInterestType(k) != "bank")&&(getPointOfInterestType(k) != "hospital"))) {
+            continue;
+        }
+        if (ratio1 <= 7 && ((getPointOfInterestType(k) != "bus_station")&&(getPointOfInterestType(k) != "public_building")&&(getPointOfInterestType(k) != "bank")&&(getPointOfInterestType(k) != "hospital"))&&((getPointOfInterestType(k) != "fast_food")&&(getPointOfInterestType(k) != "cafe")&&(getPointOfInterestType(k) != "restaurant"))) {
+            continue;
+>>>>>>> .r37
+        }
+    }
+}
+
+<<<<<<< .mine
+void drawfeatures_island() {
+    for (unsigned i = 0; i < getNumberOfFeatures(); i++) {
+        switch (getFeatureType(i)) {
+            case Island:
+            {
+                setcolor(t_color(0XE9, 0XE4, 0XDE));
+                drawafeature(i);
+                continue;
+            }
+        }
+    }
+}
+
+void drawfeatures_river_stream() {
+    for (unsigned i = 0; i < getNumberOfFeatures(); i++) {
+        switch (getFeatureType(i)) {
+                //Blue for lakes
+            case River:
+            {
+                setcolor(t_color(0X66, 0XB0, 0XFF));
+                drawafeature(i);
+                continue;
+            }
+
+                //Green for green spaces
+            case Stream:
+            {
+                if (get_visible_world().get_height() / maxh >= 0.7) {
+                    continue;
+                }
+                setcolor(t_color(0X91, 0XC7, 0XFF));
+                float inix = getFeaturePoint(i, 0).lon * cosavelat * DEG_TO_RAD;
+                float iniy = getFeaturePoint(i, 0).lat*DEG_TO_RAD;
+                for (unsigned k = 1; k < getFeaturePointCount(i); k++) {
+                    drawline(inix, iniy, getFeaturePoint(i, k).lon * cosavelat * DEG_TO_RAD, getFeaturePoint(i, k).lat * DEG_TO_RAD);
+                    inix = getFeaturePoint(i, k).lon * cosavelat * DEG_TO_RAD;
+                    iniy = getFeaturePoint(i, k).lat*DEG_TO_RAD;
+                }
+                continue;
+            }
+        }
+    }
+}
+
+//General draw feature function: given a feature id, determine if its open/closed then draws it
+void drawafeature(unsigned i) {
+    t_point tparrlk[getFeaturePointCount(i)];
+    if ((tparrlk[0].x == tparrlk[getFeaturePointCount(i) - 1].x)&&(tparrlk[0].y == tparrlk[getFeaturePointCount(i) - 1].y)) {
+        for (unsigned k = 0; k < getFeaturePointCount(i); k++) {
+            tparrlk[k].x = getFeaturePoint(i, k).lon * cosavelat * DEG_TO_RAD;
+            tparrlk[k].y = getFeaturePoint(i, k).lat*DEG_TO_RAD;
+        }
+
+        fillpoly(tparrlk, getFeaturePointCount(i));
+    } else {
+        float inix = getFeaturePoint(i, 0).lon * cosavelat * DEG_TO_RAD;
+        float iniy = getFeaturePoint(i, 0).lat*DEG_TO_RAD;
+        for (unsigned k = 1; k < getFeaturePointCount(i); k++) {
+            drawline(inix, iniy, getFeaturePoint(i, k).lon * cosavelat * DEG_TO_RAD, getFeaturePoint(i, k).lat * DEG_TO_RAD);
+            inix = getFeaturePoint(i, k).lon * cosavelat * DEG_TO_RAD;
+            iniy = getFeaturePoint(i, k).lat*DEG_TO_RAD;
+        }
+    }
+}
+
+=======
+>>>>>>> .r37
+//General function to draw a street name given its id
+void drawStreetName(unsigned streetID) {
+    setcolor(BLACK);
+
+    vector<unsigned> streetSegID = find_street_street_segments(streetID);
+    LatLon point1;
+    LatLon point2;
+    double length = 0;
+    for (unsigned b = 0; b < streetSegID.size(); b++) {
+        StreetSegmentInfo info = getStreetSegmentInfo(streetSegID[b]);
+        double distance = 0;
+        vector<LatLon> positionOfPoints;
+        positionOfPoints.push_back(getIntersectionPosition(info.from));
+        for (unsigned c = 0; c < info.curvePointCount; c++) {
+            positionOfPoints.push_back(getStreetSegmentCurvePoint(streetSegID[b], c));
+        }
+        positionOfPoints.push_back(getIntersectionPosition(info.to));
+        for (unsigned c = 0; c < positionOfPoints.size() - 1; c++) {
+            distance = find_distance_between_two_points(positionOfPoints[c], positionOfPoints[c + 1]); //calculate the segment length
+            if (distance > length) {
+                length = distance;
+                point1 = positionOfPoints[c];
+                point2 = positionOfPoints[c + 1];
+            }
+        }
+
+    }
+    float x = (point1.lon + point2. lon) / 2 * DEG_TO_RAD*cosavelat;
+    float y = (point1.lat + point2.lat) / 2 * DEG_TO_RAD;
+    float theta = atan((point1.lat - point2.lat) / ((point1.lon - point2.lon) * cosavelat));
+    settextrotation(theta / DEG_TO_RAD);
+    setcolor(BLACK);
+    float ratio = maxh / get_visible_world().get_height();
+    ratio = 40 / (ratio + 10) + 6;
+    ratio = 0.02 * pow(ratio - 8, 2) + 9;
+    setfontsize(ratio);
+    drawtext(x, y, getStreetName(streetID), 1000, 1000);
+    settextrotation(0);
+}
+
+//Draws the compass, called in drawscreen() at last
+void drawcompass() {
+    setcolor(BLACK);
+    setlinewidth(5);
+    float radius=get_visible_world().get_width()/40;
+    float xt=get_visible_world().bottom_left().x+ get_visible_world().get_width()/8;
+    float yt = get_visible_world().bottom_left().y+ get_visible_world().get_height()/8;
+    drawarc(xt,yt,radius,0,360);
+    fillarc(xt,yt,radius/5,0,360);
+    setfontsize(50);
+    drawtext(xt-radius,yt,"←",1000,1000);
+    drawtext(xt+radius,yt,"→",1000,1000);
+    drawtext(xt,yt+radius,"↑",1000,1000);
+    drawtext(xt,yt-radius,"↓",1000,1000);
+    setfontsize(25);
+    drawtext(xt-radius*2.5,yt,"W",1000,1000);
+    drawtext(xt+radius*2.5,yt,"E",1000,1000);
+    drawtext(xt,yt+radius*2.5,"N",1000,1000);
+    drawtext(xt,yt-radius*2.5,"S",1000,1000);
+}
+
+<<<<<<< .mine
+//Draw POIs as yellow dots and show their names
+void showPOI() {
+    float ratio = maxh / get_visible_world().get_height();
+    float ratio1 = pow(ratio, 0.4);
+    float ratio2 = pow(ratio + 200, 0.4);
+    setfontsize(ratio2);
+    //cout<<ratio<<endl;
+    for (unsigned k = 0; k < getNumberOfPointsOfInterest(); k++) {
+        if (ratio1 <= 5 && ((getPointOfInterestType(k) != "bus_station")&&(getPointOfInterestType(k) != "public_building")&&(getPointOfInterestType(k) != "bank")&&(getPointOfInterestType(k) != "hospital"))) {
+            continue;
+=======
+void drawafeature(unsigned i) {
+    t_point tparrlk[getFeaturePointCount(i)];
+    if ((tparrlk[0].x == tparrlk[getFeaturePointCount(i) - 1].x)&&(tparrlk[0].y == tparrlk[getFeaturePointCount(i) - 1].y)) {
+        for (unsigned k = 0; k < getFeaturePointCount(i); k++) {
+            tparrlk[k].x = getFeaturePoint(i, k).lon * global * DEG_TO_RAD;
+            tparrlk[k].y = getFeaturePoint(i, k).lat*DEG_TO_RAD;
+        }
+
+        fillpoly(tparrlk, getFeaturePointCount(i));
+    } else {
+        float inix = getFeaturePoint(i, 0).lon * global * DEG_TO_RAD;
+        float iniy = getFeaturePoint(i, 0).lat*DEG_TO_RAD;
+        for (unsigned k = 1; k < getFeaturePointCount(i); k++) {
+            drawline(inix, iniy, getFeaturePoint(i, k).lon * global * DEG_TO_RAD, getFeaturePoint(i, k).lat * DEG_TO_RAD);
+            inix = getFeaturePoint(i, k).lon * global * DEG_TO_RAD;
+            iniy = getFeaturePoint(i, k).lat*DEG_TO_RAD;
+        }
+    }
+}
+
+void drawfeatures_lake_shoreline() {
+    for (unsigned i = 0; i < getNumberOfFeatures(); i++) {
+        switch (getFeatureType(i)) {
+                //Blue for lakes
+            case Lake:
+            {
+                setcolor(t_color(0XB7, 0XDA, 0XFF));
+                drawafeature(i);
+                continue;
+            }
+
+                //Green for green spaces
+            case Shoreline:
+            {
+                setcolor(t_color(0XC7, 0XE2, 0XFF));
+                drawafeature(i);
+                continue;
+            }
+>>>>>>> .r37
+        }
+        if (ratio1 <= 7 && ((getPointOfInterestType(k) != "bus_station")&&(getPointOfInterestType(k) != "public_building")&&(getPointOfInterestType(k) != "bank")&&(getPointOfInterestType(k) != "hospital"))&&((getPointOfInterestType(k) != "fast_food")&&(getPointOfInterestType(k) != "cafe")&&(getPointOfInterestType(k) != "restaurant"))) {
+            continue;
+        }
+        float x = getPointOfInterestPosition(k).lon * DEG_TO_RAD*cosavelat;
+        float y = getPointOfInterestPosition(k).lat*DEG_TO_RAD;
+        float diff = get_visible_world().get_height() / 120;
+        setcolor(YELLOW);
+        fillarc(x, y, diff, 0, 360);
+        setcolor(BLACK);
+        drawtext(x, y, getPointOfInterestName(k), 1000, 1000);
+        //cout<<getPointOfInterestType(k)<<endl;
+    }
+}
+
+<<<<<<< .mine
+//Find the very centre of a street given its id
+LatLon findCenterPoint(unsigned streetID) {
+    vector<unsigned> streetSegID = find_street_street_segments(streetID);
+    LatLon point1;
+    LatLon point2;
+    double length = 0;
+    for (unsigned b = 0; b < streetSegID.size(); b++) {
+        StreetSegmentInfo info = getStreetSegmentInfo(streetSegID[b]);
+        double distance = 0;
+        vector<LatLon> positionOfPoints;
+        positionOfPoints.push_back(getIntersectionPosition(info.from));
+        for (unsigned c = 0; c < info.curvePointCount; c++) {
+            positionOfPoints.push_back(getStreetSegmentCurvePoint(streetSegID[b], c));
+        }
+        positionOfPoints.push_back(getIntersectionPosition(info.to));
+        for (unsigned c = 0; c < positionOfPoints.size() - 1; c++) {
+            distance = find_distance_between_two_points(positionOfPoints[c], positionOfPoints[c + 1]); //calculate the segment length
+            if (distance > length) {
+                length = distance;
+                point1 = positionOfPoints[c];
+                point2 = positionOfPoints[c + 1];
+=======
+void drawfeatures_river_stream() {
+    for (unsigned i = 0; i < getNumberOfFeatures(); i++) {
+        switch (getFeatureType(i)) {
+                //Blue for lakes
+            case River:
+            {
+                setcolor(t_color(0X66, 0XB0, 0XFF));
+                drawafeature(i);
+                continue;
+            }
+
+                //Green for green spaces
+            case Stream:
+            {
+                if (get_visible_world().get_height() / maxh >= 0.7) {
+                    continue;
+                }
+                setcolor(t_color(0X91, 0XC7, 0XFF));
+                float inix = getFeaturePoint(i, 0).lon * global * DEG_TO_RAD;
+                float iniy = getFeaturePoint(i, 0).lat*DEG_TO_RAD;
+                for (unsigned k = 1; k < getFeaturePointCount(i); k++) {
+                    drawline(inix, iniy, getFeaturePoint(i, k).lon * global * DEG_TO_RAD, getFeaturePoint(i, k).lat * DEG_TO_RAD);
+                    inix = getFeaturePoint(i, k).lon * global * DEG_TO_RAD;
+                    iniy = getFeaturePoint(i, k).lat*DEG_TO_RAD;
+                }
+                continue;
+>>>>>>> .r37
+            }
+        }
+
+    }
+<<<<<<< .mine
+    LatLon returnValue;
+    returnValue.lat = (point1.lat + point2.lat) / 2;
+    returnValue.lon = (point1.lon + point2.lon) / 2;
+    return returnValue;
+}=======
+}
+
+LatLon findCenterPoint(unsigned streetID) {
+    vector<unsigned> streetSegID = find_street_street_segments(streetID);
+    LatLon point1;
+    LatLon point2;
+    double length = 0;
+    for (unsigned b = 0; b < streetSegID.size(); b++) {
+        StreetSegmentInfo info = getStreetSegmentInfo(streetSegID[b]);
+        double distance = 0;
+        vector<LatLon> positionOfPoints;
+        positionOfPoints.push_back(getIntersectionPosition(info.from));
+        for (unsigned c = 0; c < info.curvePointCount; c++) {
+            positionOfPoints.push_back(getStreetSegmentCurvePoint(streetSegID[b], c));
+        }
+        positionOfPoints.push_back(getIntersectionPosition(info.to));
+        for (unsigned c = 0; c < positionOfPoints.size() - 1; c++) {
+            distance = find_distance_between_two_points(positionOfPoints[c], positionOfPoints[c + 1]); //calculate the segment length
+            if (distance > length) {
+                length = distance;
+                point1 = positionOfPoints[c];
+                point2 = positionOfPoints[c + 1];
+            }
+        }
+
+    }
+    LatLon returnValue;
+    returnValue.lat = (point1.lat + point2.lat) / 2;
+    returnValue.lon = (point1.lon + point2.lon) / 2;
+    return returnValue;
+}
+
+>>>>>>> .r37

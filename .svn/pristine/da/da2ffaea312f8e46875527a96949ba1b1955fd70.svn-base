@@ -1,0 +1,197 @@
+#include "m2.h"
+#include "m1.h"
+#include <vector>
+#include <algorithm>
+#include <math.h>
+#include <iostream>
+float global;
+using namespace std;
+const t_bound_box initial_coords;
+float maxh;
+float maxw;
+
+void draw_map() {
+    float inilat = -180;
+    float inilon = -180;
+    float inimlat = 180;
+    float inimlon = 180;
+    for (unsigned i = 0; i < getNumberOfIntersections(); i++) {
+        if (getIntersectionPosition(i).lat > inilat) {
+            inilat = getIntersectionPosition(i).lat;
+        }
+        if (getIntersectionPosition(i).lon > inilon) {
+            inilon = getIntersectionPosition(i).lon;
+        }
+        if (getIntersectionPosition(i).lat < inimlat) {
+            inimlat = getIntersectionPosition(i).lat;
+        }
+        if (getIntersectionPosition(i).lon < inimlon) {
+            inimlon = getIntersectionPosition(i).lon;
+        }
+    }
+
+    init_graphics("My GIS", t_color(0XE9, 0XE4, 0XDE));
+
+    float averageLat = (inimlat + inilat) / 2 * DEG_TO_RAD;
+    global = cos(averageLat);
+    t_point bottomleft(inimlon * DEG_TO_RAD * global, inimlat * DEG_TO_RAD);
+    maxh = inilat * DEG_TO_RAD - inimlat * DEG_TO_RAD;
+    maxw = inilon * DEG_TO_RAD * global - inimlon * DEG_TO_RAD * global;
+    t_bound_box initial_coords = t_bound_box(bottomleft, maxw, maxh);
+
+    set_visible_world(initial_coords);
+    drawscreen();
+    //event_loop(NULL, NULL, NULL, drawscreen);
+    event_loop(act, NULL, NULL, drawscreen);
+
+}
+
+void act(float x, float y, t_event_buttonPressed event) {
+    drawscreen();
+
+    LatLon clickposition;
+    clickposition.lat = y / DEG_TO_RAD;
+    clickposition.lon = x / DEG_TO_RAD / global;
+    unsigned inter = find_closest_intersection(clickposition);
+
+    float diff = get_visible_world().get_height() / 80;
+
+
+    if (helper_find_distance(getIntersectionPosition(inter), clickposition) <= diff * EARTH_RADIUS_IN_METERS) {
+        setcolor(MAGENTA);
+        fillarc(getIntersectionPosition(inter).lon * DEG_TO_RAD*global, getIntersectionPosition(inter).lat*DEG_TO_RAD, diff, 0, 360);
+        cout << "***********************************" << endl << "Intersection Info: " << endl << "    ID: " << inter << endl << "  Streets: ";
+        for (unsigned count = 0; count < getIntersectionStreetSegmentCount(inter) - 1; count++) {
+            StreetSegmentInfo tempstreet = getStreetSegmentInfo(getIntersectionStreetSegment(inter, count));
+            cout << getStreetName(tempstreet.streetID) << " & ";
+        }
+        StreetSegmentInfo tempstreet = getStreetSegmentInfo(getIntersectionStreetSegment(inter, getIntersectionStreetSegmentCount(inter) - 1));
+        cout << getStreetName(tempstreet.streetID) << endl;
+        cout << "***********************************" << endl << endl;
+    }
+
+    // Redraw screen to show the new line.  Could do incrementally, but this is easier.
+}
+
+void drawscreen(void) {
+    set_draw_mode(DRAW_NORMAL); // Should set this if your program does any XOR drawing in callbacks.
+    clearscreen(); /* Should precede drawing for all drawscreens */
+    setfontsize(10);
+    setlinestyle(SOLID);
+    setlinewidth(1);
+    setcolor(BLACK);
+
+    drawfeatures_greenspace_lake();
+    drawsegments();
+    drawfeatures_building();
+    //cout<<get_visible_world().get_height()<<" "<<maxh<<endl;
+    if (get_visible_world().get_height() <= maxh / 10) {
+        showPOI();
+    }
+}
+
+void drawsegments() {
+    setcolor(WHITE);
+    float ratio = maxh / get_visible_world().get_height();
+    //ratio=log(ratio+1.71828)/log(2.71828);
+    ratio = pow(ratio,0.66);
+    //draw street segment lines
+    for (unsigned i = 0; i < getNumberOfStreetSegments(); i++) {
+
+
+        StreetSegmentInfo a = getStreetSegmentInfo(i);
+
+        float spdlmt = a.speedLimit;
+        if (spdlmt == 50 ) {
+            setlinewidth(1 * ratio);
+        } else {
+            setlinewidth(spdlmt / 50 * 2.5 * ratio);
+        }
+
+
+        float y1 = getIntersectionPosition(a.from).lat* DEG_TO_RAD;
+        float y2 = getIntersectionPosition(a.to).lat* DEG_TO_RAD;
+        float x1 = getIntersectionPosition(a.from).lon * DEG_TO_RAD * global;
+        float x2 = getIntersectionPosition(a.to).lon * DEG_TO_RAD * global;
+
+        t_point curvepoints[getStreetSegmentInfo(i).curvePointCount];
+        float currx = x1;
+        float curry = y1;
+
+        for (unsigned k = 0; k < getStreetSegmentInfo(i).curvePointCount; k++) {
+            drawline(currx, curry, getStreetSegmentCurvePoint(i, k).lon * DEG_TO_RAD*global, getStreetSegmentCurvePoint(i, k).lat * DEG_TO_RAD);
+            currx = getStreetSegmentCurvePoint(i, k).lon * DEG_TO_RAD*global;
+            curry = getStreetSegmentCurvePoint(i, k).lat*DEG_TO_RAD;
+        }
+        drawline(currx, curry, x2, y2);
+    }
+    setlinewidth(1);
+}
+
+void drawfeatures_greenspace_lake() {
+    for (unsigned i = 0; i < getNumberOfFeatures(); i++) {
+        switch (getFeatureType(i)) {
+                //Blue for lakes
+            case Lake:
+            {
+                setcolor(t_color(0XB7, 0XDA, 0XFF));
+                t_point tparrlk[getFeaturePointCount(i)];
+                for (unsigned k = 0; k < getFeaturePointCount(i); k++) {
+                    tparrlk[k].x = getFeaturePoint(i, k).lon * global * DEG_TO_RAD;
+                    tparrlk[k].y = getFeaturePoint(i, k).lat*DEG_TO_RAD;
+                }
+
+                fillpoly(tparrlk, getFeaturePointCount(i));
+                continue;
+            }
+                //Green for green spaces
+            case Greenspace:
+            {
+                setcolor(t_color(0XCB, 0XDF, 0XAC));
+                t_point tparrgs[getFeaturePointCount(i)];
+                for (unsigned k = 0; k < getFeaturePointCount(i); k++) {
+                    tparrgs[k].x = getFeaturePoint(i, k).lon * global * DEG_TO_RAD;
+                    tparrgs[k].y = getFeaturePoint(i, k).lat*DEG_TO_RAD;
+                }
+
+                fillpoly(tparrgs, getFeaturePointCount(i));
+                continue;
+            }
+                //light grey for buildings
+        }
+    }
+}
+
+void drawfeatures_building() {
+    for (unsigned i = 0; i < getNumberOfFeatures(); i++) {
+        switch (getFeatureType(i)) {
+            case Building:
+            {
+                if (get_visible_world().get_height()/maxh >= 0.15) {
+                    continue;
+                }
+                setcolor(t_color(0XF4, 0XF3, 0XEE));
+                t_point tparrgs[getFeaturePointCount(i)];
+                for (unsigned k = 0; k < getFeaturePointCount(i); k++) {
+                    tparrgs[k].x = getFeaturePoint(i, k).lon * global * DEG_TO_RAD;
+                    tparrgs[k].y = getFeaturePoint(i, k).lat*DEG_TO_RAD;
+                }
+
+                fillpoly(tparrgs, getFeaturePointCount(i));
+                continue;
+            }
+        }
+    }
+}
+    void showPOI() {
+        setcolor(YELLOW);
+        for (unsigned k = 0; k < getNumberOfPointsOfInterest(); k++) {
+            float x = getPointOfInterestPosition(k).lon * DEG_TO_RAD*global;
+            float y = getPointOfInterestPosition(k).lat*DEG_TO_RAD;
+            float diff = get_visible_world().get_height() / 200;
+            drawline(x - diff, y - diff, x + diff, y + diff);
+            drawline(x - diff, y + diff, x + diff, y - diff);
+            drawline(x - diff, y, x + diff, y);
+            drawline(x, y - diff, x, y + diff);
+        }
+    }

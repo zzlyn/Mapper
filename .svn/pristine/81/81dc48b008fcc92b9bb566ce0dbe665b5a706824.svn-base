@@ -1,0 +1,56 @@
+#include "m2.h"
+#include "m1.h"
+float global;
+void draw_map() {
+    float inilat = -180;
+    float inilon = -180;
+    float inimlat = 180;
+    float inimlon = 180;
+    for (unsigned i = 0; i < getNumberOfIntersections(); i++) {
+        if (getIntersectionPosition(i).lat > inilat) {
+            inilat = getIntersectionPosition(i).lat;
+        }
+        if (getIntersectionPosition(i).lon > inilon) {
+            inilon = getIntersectionPosition(i).lon;
+        }
+        if (getIntersectionPosition(i).lat < inimlat) {
+            inimlat = getIntersectionPosition(i).lat;
+        }
+        if (getIntersectionPosition(i).lon < inimlon) {
+            inimlon = getIntersectionPosition(i).lon;
+        }
+    }
+
+    init_graphics("Some Example Graphics", WHITE);
+
+    float averageLat = (inimlat + inilat) / 2 * DEG_TO_RAD;
+    global = averageLat;
+    const t_bound_box initial_coords = t_bound_box(inimlon * DEG_TO_RAD * cos(averageLat), inimlat * DEG_TO_RAD, inilon * DEG_TO_RAD * cos(averageLat), inilat * DEG_TO_RAD);
+
+    set_visible_world(initial_coords);
+    drawscreen();
+    event_loop(NULL, NULL, NULL, drawscreen);
+
+}
+
+void drawscreen(void) {
+    set_draw_mode(DRAW_NORMAL); // Should set this if your program does any XOR drawing in callbacks.
+    clearscreen(); /* Should precede drawing for all drawscreens */
+
+    setfontsize(10);
+    setlinestyle(SOLID);
+    setlinewidth(1);
+    setcolor(BLACK);
+    drawline(43.48, -79.79, 43.92, -79);
+
+    //draw street segment lines
+    for (unsigned i = 0; i < getNumberOfStreetSegments(); i++) {
+        StreetSegmentInfo a = getStreetSegmentInfo(i);
+        float y1 = getIntersectionPosition(a.from).lat* DEG_TO_RAD;
+        float y2 = getIntersectionPosition(a.to).lat* DEG_TO_RAD;
+        float x1 = getIntersectionPosition(a.from).lon* DEG_TO_RAD * cos(global);
+        float x2 = getIntersectionPosition(a.to).lon* DEG_TO_RAD * cos(global);
+
+        drawline(x1, y1, x2, y2);
+    }
+}

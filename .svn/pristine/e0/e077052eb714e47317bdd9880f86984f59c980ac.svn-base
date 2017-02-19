@@ -1,0 +1,200 @@
+#include "m3.h"
+#include "m1.h"
+#include "m2.h"
+#include <queue>
+#include <set>
+#include <algorithm>
+using namespace std;
+
+//extern map<unsigned, StreetSegmentInfo> segmentinfo;
+//vector<intersectionInfo> nodes;
+
+struct cmp {
+
+    bool operator()(const intersectionInfo *lfs, const intersectionInfo *rhs) {
+        if (lfs->distfrmsource > rhs->distfrmsource) {
+            return true;
+        }
+    }
+    //    bool operator=(const intersectionInfo lfs, const intersectionInfo rhs){
+    //        if (lfs.distfrmsource == rhs.distfrmsource) {
+    //            return true;
+    //        }
+    //    }
+};
+
+vector<unsigned> find_path_between_intersections(unsigned intersect_id_start, unsigned intersect_id_end) {
+    
+    vector<unsigned> segments;
+    priority_queue<intersectionInfo*, vector<intersectionInfo*>, cmp> nodes;
+
+    vector<intersectionInfo> exactidtointer;
+    for (unsigned lul = 0; lul < getNumberOfIntersections(); lul++) {
+        intersectionInfo temp;
+        temp.distfrmsource = INFINITYY;
+        temp.previd = UNKNOWN;
+        temp.id = lul;
+        temp.intheq = false;
+        exactidtointer.push_back(temp);
+    }
+
+    exactidtointer[intersect_id_start].distfrmsource = 0;
+
+    nodes.push(&exactidtointer[intersect_id_start]);
+    unsigned prevstid = UNKNOWN;
+    while (nodes.size() != 0) {
+        intersectionInfo curr = *nodes.top();
+        nodes.pop();
+        if (curr.id == intersect_id_end) {
+            while (curr.previd != UNKNOWN) {
+                segments.push_back(curr.previd);
+                curr = exactidtointer[theothernodeid(curr.id, curr.previd)];
+            }
+            reverse(segments.begin(), segments.end());
+            return segments;
+        }
+        for (unsigned k = 0; k < getIntersectionStreetSegmentCount(curr.id); k++) {
+            unsigned idk = getIntersectionStreetSegment(curr.id, k);
+            unsigned othernode = theothernodeid(curr.id, idk);
+            StreetSegmentInfo temp = getStreetSegmentInfo(idk);
+            if (!((temp.from == curr.id) || (temp.to == curr.id && temp.oneWay == false))) {
+                continue;
+            }
+
+
+            double newtime = exactidtointer[curr.id].distfrmsource + find_street_segment_travel_time(idk);
+            unsigned currid = getStreetSegmentInfo(idk).streetID;
+            if (currid != prevstid && prevstid != UNKNOWN) {
+                newtime = newtime + 0.25;
+            }
+            prevstid = currid;
+            if (exactidtointer[othernode].intheq == false) {
+                exactidtointer[othernode].intheq = true;
+                nodes.push(&exactidtointer[othernode]);
+            }
+            if (newtime < exactidtointer[othernode].distfrmsource) {
+                exactidtointer[othernode].distfrmsource = newtime;
+                exactidtointer[othernode].previd = idk;
+                exactidtointer[othernode].intheq = true;
+                intersectionInfo dummy;
+                dummy.distfrmsource=0;
+                nodes.push(&dummy);
+                nodes.pop();
+            }
+
+
+
+        }
+    }
+
+
+}
+
+
+// 
+//    
+//        vector<intersectionInfo> exactidtointer;
+//    vector<unsigned> segments;
+//    set<intersectionInfo,cmp> nodes;
+//    for (unsigned lul = 0; lul < getNumberOfIntersections(); lul++) {
+//        intersectionInfo temp;
+//        temp.distfrmsource = INFINITYY;
+//        temp.previd = UNKNOWN;
+//        temp.id = lul;
+//        temp.intheq = false;
+//        exactidtointer.push_back(temp);
+//        if (lul != intersect_id_start) {
+//            nodes.insert(exactidtointer[lul]);
+//        }
+//    }
+//    exactidtointer[intersect_id_start].distfrmsource = 0;
+//    nodes.insert(exactidtointer[intersect_id_start]);
+//    unsigned prevstid=UNKNOWN;
+//    
+//    
+//    while (!nodes.empty()) {
+//        intersectionInfo curr = *nodes.begin();
+//        nodes.erase(nodes.begin());
+//        if (curr.id == intersect_id_end) {
+//            while (curr.previd != UNKNOWN) {
+//                segments.push_back(curr.previd);
+//                curr = exactidtointer[theothernodeid(curr.id, curr.previd)];
+//            }
+//            reverse(segments.begin(), segments.end());
+//            return segments;
+//        }
+//        for (unsigned k = 0; k < getIntersectionStreetSegmentCount(curr.id); k++) {
+//            unsigned idk = getIntersectionStreetSegment(curr.id, k);
+//            unsigned othernode = theothernodeid(curr.id, idk);
+//            StreetSegmentInfo temp=getStreetSegmentInfo(idk);
+//            if (!((temp.from==curr.id && temp.to==othernode)||(temp.to==curr.id && temp.from==othernode && temp.oneWay==false))) {
+//                continue;
+//            }
+//            double newtime = exactidtointer[curr.id].distfrmsource + find_street_segment_travel_time(idk);
+//            
+//            unsigned currid = getStreetSegmentInfo(idk).streetID;
+//            if (currid != prevstid && prevstid != UNKNOWN) {
+//               newtime = newtime + 0.25;
+//            }
+//            prevstid=currid;
+//            
+//            if (newtime < exactidtointer[othernode].distfrmsource) {
+//                //                for (set<intersectionInfo, cmp>::iterator it=nodes.begin(); it!=nodes.end(); it++){
+//                //                    intersectionInfo k=*it;
+//                //                    if (k.id==othernode){
+//                //                        nodes.erase(k);
+//                //                        break;
+//                //                    }
+//                //                }
+////                nodes.erase(nodes.equal_range(exactidtointer[othernode]));
+//                exactidtointer[othernode].distfrmsource = newtime;
+//                exactidtointer[othernode].previd = idk;
+//                exactidtointer[othernode].intheq=true;
+//                nodes.insert(exactidtointer[othernode]);
+//            }
+//
+//        }
+//    }
+
+unsigned theothernodeid(unsigned thisnodeid, unsigned segmentid) {
+    StreetSegmentInfo temp = getStreetSegmentInfo(segmentid);
+    if (temp.from == thisnodeid) {
+        return temp.to;
+    } else if (temp.to == thisnodeid) {
+        return temp.from;
+    }
+}
+
+double compute_path_travel_time(const vector<unsigned>& path) {
+    unsigned size = path.size();
+    if (size == 0) {
+        return 0;
+    }
+    StreetSegmentInfo temp = getStreetSegmentInfo(path[0]);
+    double runtime = find_street_segment_travel_time(path[0]);
+    unsigned stid = temp.streetID;
+    for (unsigned p = 1; p < size; p++) {
+        StreetSegmentInfo temp2 = getStreetSegmentInfo(path[p]);
+        if (temp2.streetID != stid) {
+            runtime = runtime + 0.25;
+        }
+        stid = temp2.streetID;
+        runtime = runtime + find_street_segment_travel_time(path[p]);
+    }
+    return runtime;
+}
+
+vector<unsigned> find_path_to_point_of_interest(unsigned intersect_id_start, std::string point_of_interest_name) {
+    vector<unsigned> temp;
+    return temp;
+}
+
+
+//unsigned stidbetween(unsigned interid1, unsigned interid2){
+//    double time=INFINITYY;
+//    for (unsigned k=0; k<getIntersectionStreetSegmentCount(interid1); k++){
+//        StreetSegmentInfo temp=getIntersectionStreetSegment(interid1,k);
+//        if ()
+//    }
+//}
+
