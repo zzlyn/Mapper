@@ -18,7 +18,7 @@ Back end algorithms & functionalities
     - Intergrated the solution with A-Star technique based on a physical euclidean distance heuristic, improved performance in most cases
   - Route planning: a similar traveling-salesman problem, resolved with an altered version of the path finding function
 
-#Implementation code are in libstreetmap/src
+Implementation code are in libstreetmap/src
 
 A more detailed final project report documentation: 
   https://docs.google.com/document/d/1DBmeeYcobygr-ExJpoWJ-o9VmCs3cj1OnHoJOy5E2Jo/edit?usp=sharing
