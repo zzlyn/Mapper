@@ -34,7 +34,4 @@
 
 ### A more detailed final project report documentation: 
 
-
-1. I have taken down the core implementation code of this project to prevent potential plagiarism
-2. If you are interested in the actual implementation please contact me directly
-3. If you are a student taking ECE297 I can't offer any sort of help, solve it on your own
+- Is removed to prevent plagiarism alone with major source codes. If interested please contact me.
