@@ -35,6 +35,6 @@
 ### A more detailed final project report documentation: 
 
 
-- I have taken down the core implementation code of this project to prevent potential plagiarism
-- If you are interested in the actual implementation please contact me directly
-- If you are a student taking ECE297 I can't offer any sort of help, solve it on your own
+1. I have taken down the core implementation code of this project to prevent potential plagiarism
+2. If you are interested in the actual implementation please contact me directly
+3. If you are a student taking ECE297 I can't offer any sort of help, solve it on your own
