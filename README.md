@@ -33,4 +33,8 @@
 
 
 ### A more detailed final project report documentation: 
-  https://docs.google.com/document/d/1DBmeeYcobygr-ExJpoWJ-o9VmCs3cj1OnHoJOy5E2Jo/edit?usp=sharing
+
+
+#I have taken down the core implementation code of this project to prevent potential plagiarism#
+#If you are interested in the actual implementation please contact me at zzlyn321@hotmail.com or zzlyn.lin@mail.utoronto.ca#
+#If you are a student taking ECE297 I can't offer any sort of help, solve it on your own#
